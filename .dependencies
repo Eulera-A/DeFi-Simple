@@ -1,0 +1,6 @@
+yarn add --dev @nomiclabs/hardhat-ethers
+yarn add --dev @npm:hardhat-deploy-ethers 
+ethers 
+yarn add --dev @nomiclabs/hardhat-etherscan 
+yarn add --dev @nomiclabs/hardhat-waffle 
+yarn add --dev chai ethereum-waffle hardhat hardhat-contract-sizer hardhat-deploy hardhat-gas-reporter prettier prettier-plugin-solidity solhint solidity-coverage dotenv
