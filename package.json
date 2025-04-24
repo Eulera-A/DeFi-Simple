@@ -8,7 +8,6 @@
     "chai": "^5.2.0",
     "dotenv": "^16.4.7",
     "ethereum-waffle": "^4.0.10",
-    "ethers": "^6.13.5",
     "hardhat": "^2.22.19",
     "hardhat-contract-sizer": "^2.10.0",
     "hardhat-deploy": "^1.0.1",
@@ -17,5 +16,8 @@
     "prettier-plugin-solidity": "^1.4.2",
     "solhint": "^5.0.5",
     "solidity-coverage": "^0.8.14"
+  },
+  "dependencies": {
+    "ethers": "^5.7.2"
   }
 }
