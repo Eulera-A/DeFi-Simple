@@ -33,6 +33,7 @@ interface IWeth {
         uint256 value
     ) external returns (bool success);
 
+    // addtional deposit and withdraw function not required in ERC20 token
     function deposit() external payable;
 
     function withdraw(uint256 wad) external;
