@@ -5,6 +5,8 @@ const { networkConfig } = require("../helper-hardhat-config");
 async function main() {
   // this protocol treats all as ERC20 token
   await getWeth();
+
+  // get the lendingPool contract and link with deployer
   const { deployer } = await getNamedAccounts();
   const lendingPool = await getLendingPool(deployer);
   console.log(`LendingPool address ${lendingPool.address}`);

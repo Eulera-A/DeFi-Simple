@@ -6,17 +6,16 @@ const networkConfig = {
     daiEthPriceFeed: "0x773616E4d11A78F511299002da57A0a94577F1f4",
     daiToken: "0x6b175474e89094c44da98b954eedeac495271d0f",
   },
-  // Due to the changing testnets, this testnet might not work as shown in the video
-  5: {
-    name: "goerli",
-    ethUsdPriceFeed: "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e",
-    wethToken: "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6",
+  11155111: {
+    name: "sepolia",
+    ethUsdPriceFeed: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
+    wethToken: "0xA70dc554504E93712c11BE6d7E747536F52321f1",
     // This is the AaveV2 Lending Pool Addresses Provider
-    lendingPoolAddressesProvider: "0x5E52dEc931FFb32f609681B8438A51c675cc232d",
+    lendingPoolAddressesProvider: "0x88600eacb89bcbe57ab2bdac776afba6b2c105e2",
     // This is LINK/ETH feed
-    daiEthPriceFeed: "0xb4c4a493AB6356497713A78FFA6c60FB53517c63",
+    //daiEthPriceFeed: "0xb4c4a493AB6356497713A78FFA6c60FB53517c63",
     // This is the LINK token
-    daiToken: "0x326C977E6efc84E512bB9C30f76E30c160eD06FB",
+    //daiToken: "0x326C977E6efc84E512bB9C30f76E30c160eD06FB",
   },
   // Due to the different testnets, we are leaving kovan in as a reference
   42: {

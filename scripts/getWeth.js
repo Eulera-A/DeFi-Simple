@@ -11,7 +11,7 @@ async function getWeth() {
   //
   const iWeth = await ethers.getContractAt(
     "IWeth", // the iweth abi
-    "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", //address
+    "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // contact address on mainnet!
     signer //the signer object! which is the deployer
   );
   const tx = await iWeth.deposit({ value: AMOUNT });
