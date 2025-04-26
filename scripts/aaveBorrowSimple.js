@@ -29,6 +29,8 @@ async function main() {
   console.log("deposit successfully!");
 }
 //youtube 19:57:44: We successfully deposit weth from weth contract into the lendingPool :)!!! go go go !!!
+// Next is to do borrow!
+//
 async function getLendingPool(account) {
   // ILendingPoolAddressesProvider (v2) Mainnet 0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5
   // ILendingPoolAddressesProvider (v2) Sepolia Testnet: 0x88600eacb89bcbe57ab2bdac776afba6b2c105e2
