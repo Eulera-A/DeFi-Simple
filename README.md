@@ -12,3 +12,9 @@ Steps:
 3. need to approve the weth we deposite into the wethtoken address tranfer into the lendingPool contract
 
 4. deposit your weth into the pool
+
+5. Time to Borrow:
+   need to check how much you can borrow
+   if your account health factor falls before 1, you get liquidated
+
+6. Borrow the DAI from the DaiToken contract (on-chain)
