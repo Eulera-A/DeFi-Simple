@@ -3,6 +3,9 @@ const { networkConfig } = require("../helper.hardhat-config");
 const { network } = require("hardhat");
 
 async function main() {
+  //house-keeping:
+  const chainId = network.config.chainId;
+
   // 1st: deposit our real eth into weth contract
   await getWeth();
 
@@ -11,13 +14,20 @@ async function main() {
   const { deployer } = await getNamedAccounts();
   const signer = await ethers.getSigner(deployer);
 
-  const lendingPool = await getLendingPool(signer);
+  const lendingPoolAddressesProviderAddress =
+    networkConfig[chainId]["lendingPoolAddressesProvider"];
+  console.log(
+    `lendingPoolAddressesProvider Address: ${lendingPoolAddressesProviderAddress}`
+  );
+  const lendingPool = await getLendingPool(
+    signer,
+    lendingPoolAddressesProviderAddress
+  );
   console.log(`LendingPool address ${lendingPool.address}`);
   // youtube to follow: 19:46:37!!! april 23
   // we already getweth on forked net :)! don't give up!!!
 
   //3rd: approve before deposit
-  const chainId = network.config.chainId;
   const wethTokenAddress = networkConfig[chainId]["wethToken"];
   console.log(`the wethToken address is ${wethTokenAddress}`);
   // approve our AMOUNT of weth in the wethToken contract go into the lendingPool
@@ -36,26 +46,42 @@ async function main() {
     deployer
   );
 
-  //  eth to dai pricefeed check:
-  // Chainlink Eth/dai price (8 decimals)
-  //const daiPriceRaw = await getDaiPrice(); // returns BigNumber
-  const ethDaiPriceRaw = await getDaiPrice(); // 8 decimals
-  const ethDaiPrice = ethDaiPriceRaw.mul(ethers.BigNumber.from("10").pow(10)); // scale back to 18 decimals
+  // Fetch ETH/DAI price from Chainlink
+  const daiEthAddress = networkConfig[chainId]["daiEthPriceFeed"];
+  const { price: daiEthPriceRaw, priceFeedDecimals: daiEthPriceDecimals } =
+    await getDaiPrice(daiEthAddress); // 18 decimals!!!!!
+  console.log(`the Dai to Eth Raw Price is ${daiEthPriceRaw.toString()}`);
 
-  // availableBorrowsETH is already in 18 decimals
-  const safetyMargin = ethers.utils.parseUnits("0.95", 18);
+  const daiEthPrice = daiEthPriceRaw.mul(
+    ethers.BigNumber.from("10").pow(18 - daiEthPriceDecimals)
+  ); // 18 decimals
+  console.log(
+    `the Dai to Eth scaled Price is ${daiEthPrice.toString()} (18 decimals)`
+  );
+
+  // Apply safety margin (e.g. 90%) to avoid liquidation risk
+  const safetyMargin = ethers.utils.parseUnits("0.90", 18); // 90%
   const availableBorrowsETHBN = availableBorrowsETH
     .mul(safetyMargin)
     .div(ethers.utils.parseUnits("1", 18));
 
-  // Calculate how much DAI to borrow
+  // Convert ETH borrowing power into DAI using DAI/ETH price
+  // inverse of DAI/ETH to get ETH/DAI
+  const ethToDaiPrice = ethers.utils.parseUnits("1", 36).div(daiEthPrice);
+  console.log(
+    `the computed (by inversion) Eth to Dai price is ${ethToDaiPrice}`
+  );
   const amountDaiToBorrowWei = availableBorrowsETHBN
-    .mul(ethDaiPrice)
+    .mul(ethToDaiPrice)
     .div(ethers.utils.parseUnits("1", 18));
-
+  console.log(
+    `✅ you can safely borrow ${amountDaiToBorrowWei} Dai in Wei unit`
+  );
   console.log(
     `✅ You can safely borrow ${ethers.utils.formatEther(amountDaiToBorrowWei)} DAI`
   );
+
+  await printAaveUserData(lendingPool, deployer);
 
   // start borrowing in WEI
   const daiTokenAddress = networkConfig[chainId]["daiToken"];
@@ -93,14 +119,17 @@ async function borrowDai(
 }
 
 // use chainlink aggregator to convert Eth into Dai
-async function getDaiPrice() {
+async function getDaiPrice(daiEthAddress) {
   const daiEthPriceFeed = await ethers.getContractAt(
     "AggregatorV3Interface",
-    "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"
+    daiEthAddress
   ); // don't need to connect with deployer's account since this is pure view,not sending tx to the contract
   const price = (await daiEthPriceFeed.latestRoundData())[1];
-  console.log(`the Dai to Eth Price is ${price.toString()}`);
-  return price;
+  const priceFeedDecimals = await daiEthPriceFeed.decimals();
+  console.log(`the Dai to ETH Price is ${price.toString()}`);
+  console.log(`the PriceFeed decimals is ${priceFeedDecimals.toString()}`);
+
+  return { price, priceFeedDecimals };
 }
 
 // Next is to do borrow!
@@ -137,12 +166,12 @@ async function printAaveUserData(lendingPool, userAddress) {
   );
 }
 
-async function getLendingPool(account) {
+async function getLendingPool(account, lendingPoolAddressesProviderAddress) {
   // ILendingPoolAddressesProvider (v2) Mainnet 0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5
   // ILendingPoolAddressesProvider (v2) Sepolia Testnet: 0x88600eacb89bcbe57ab2bdac776afba6b2c105e2
   const lendingPoolAddressesProvider = await ethers.getContractAt(
     "ILendingPoolAddressesProvider",
-    "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5",
+    lendingPoolAddressesProviderAddress,
     account
   );
   // using the getLendingPool() in the lendingPoolAddressesProvider contract
