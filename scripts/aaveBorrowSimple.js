@@ -110,12 +110,37 @@ async function main() {
     `✅ Available DAI liquidity: ${ethers.utils.formatUnits(availableLiquidity, 18)} DAI`
   );
 
-  await printAaveUserData(lendingPool, deployer);
+  // uncomment this to check the user stuff:
+  //await printAaveUserData(lendingPool, deployer);
 
   await borrowDai(daiTokenAddress, lendingPool, amountDaiToBorrowWei, deployer);
   await getBorrowUserData(lendingPool, deployerAddress);
+
+  // payback
+  await repay(
+    amountDaiToBorrowWei,
+    daiTokenAddress,
+    lendingPool,
+    deployerAddress,
+    signer
+  );
+  await getBorrowUserData(lendingPool, deployerAddress);
 }
-//youtube: 20:09:14
+
+// repay
+async function repay(amount, daiAddress, lendingPool, deployerAddress, signer) {
+  await approveErc20(daiAddress, lendingPool.address, amount, signer);
+
+  const repayTx = await lendingPool.repay(
+    daiAddress,
+    amount,
+    2,
+    deployerAddress
+  );
+  await repayTx.wait(1);
+  console.log(`Repaid`);
+}
+
 async function borrowDai(
   daiAddress,
   lendingPool,
@@ -134,7 +159,7 @@ async function borrowDai(
     const borrowTx = await lendingPool.borrow(
       daiAddress,
       amountDaiToBorrowWei,
-      2,
+      2, // variable rate
       0,
       account
     );
