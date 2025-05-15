@@ -1,6 +1,9 @@
 const { getWeth, AMOUNT } = require("../scripts/getWeth");
 const { networkConfig } = require("../helper.hardhat-config");
 const { network } = require("hardhat");
+const {
+  abi,
+} = require("../artifacts/contracts/interfaces/IPool.sol/IPool.json");
 
 async function main() {
   //house-keeping:
@@ -14,14 +17,16 @@ async function main() {
   const { deployer } = await getNamedAccounts();
   const signer = await ethers.getSigner(deployer);
 
-  const lendingPoolAddressesProviderAddress =
-    networkConfig[chainId]["lendingPoolAddressesProvider"];
+  const iPoolAddressesProviderAddress =
+    networkConfig[chainId]["IPoolAddressesProvider"];
   console.log(
-    `lendingPoolAddressesProvider Address: ${lendingPoolAddressesProviderAddress}`
+    `IPoolAddressesProvider Address: ${iPoolAddressesProviderAddress}`
   );
+  // this is v3 ipool
   const lendingPool = await getLendingPool(
     signer,
-    lendingPoolAddressesProviderAddress
+    iPoolAddressesProviderAddress,
+    abi
   );
   console.log(`LendingPool address ${lendingPool.address}`);
   // youtube to follow: 19:46:37!!! april 23
@@ -35,15 +40,22 @@ async function main() {
   console.log(
     `approved ${AMOUNT} of weth go into the lendingPool ${lendingPool.address}`
   );
-  // deposite the wethToken into the lendingPool as collateral
-  await lendingPool.deposit(wethTokenAddress, AMOUNT, deployer, 0); // takes address of the asset it is in, amount, address of the deployer, refCode(deprecated) => 0
-  console.log("deposit successfully!");
 
+  // deposite the wethToken into the lendingPool (v2) as collateral
+  // await lendingPool.deposit(wethTokenAddress, AMOUNT, deployer, 0); // takes address of the asset it is in, amount, address of the deployer, refCode(deprecated) => 0
+  // console.log("deposit successfully!");
+
+  // v3 uses supply:
+  await lendingPool.supply(wethTokenAddress, AMOUNT, deployer, 0); // takes address of the asset it is in, amount, address of the deployer, refCode(deprecated) => 0
+  console.log("supply successfully!");
+  await confirmSupply(lendingPool, wethTokenAddress, deployer);
+  const deployerAddress = await signer.getAddress();
+  //await getBorrowUserData(lendingPool, deployerAddress);
   // Next is to do borrow!
   // borrowing limit check
-  let { availableBorrowsETH, totalDebtETH } = await getBorrowUserData(
+  let { availableBorrowsBase, totalDebtBase } = await getBorrowUserData(
     lendingPool,
-    deployer
+    deployerAddress
   );
 
   // Fetch ETH/DAI price from Chainlink
@@ -61,9 +73,12 @@ async function main() {
 
   // Apply safety margin (e.g. 90%) to avoid liquidation risk
   const safetyMargin = ethers.utils.parseUnits("0.90", 18); // 90%
-  const availableBorrowsETHBN = availableBorrowsETH
+  const availableBorrowsUSDBN = availableBorrowsBase
     .mul(safetyMargin)
-    .div(ethers.utils.parseUnits("1", 18));
+    .div(ethers.utils.parseUnits("1", 8));
+  console.log(
+    `🧮 Available borrow in USD (18 decimals): ${availableBorrowsUSDBN.toString()}`
+  );
 
   // Convert ETH borrowing power into DAI using DAI/ETH price
   // inverse of DAI/ETH to get ETH/DAI
@@ -71,9 +86,9 @@ async function main() {
   console.log(
     `the computed (by inversion) Eth to Dai price is ${ethToDaiPrice}`
   );
-  const amountDaiToBorrowWei = availableBorrowsETHBN
-    .mul(ethToDaiPrice)
-    .div(ethers.utils.parseUnits("1", 18));
+  const amountDaiToBorrowWei = availableBorrowsUSDBN;
+  // .mul(ethToDaiPrice)
+  // .div(ethers.utils.parseUnits("1", 18));
   console.log(
     `✅ you can safely borrow ${amountDaiToBorrowWei} Dai in Wei unit`
   );
@@ -81,16 +96,24 @@ async function main() {
     `✅ You can safely borrow ${ethers.utils.formatEther(amountDaiToBorrowWei)} DAI`
   );
 
-  await printAaveUserData(lendingPool, deployer);
+  //await printAaveUserData(lendingPool, deployerAddress);
 
   // start borrowing in WEI
   const daiTokenAddress = networkConfig[chainId]["daiToken"];
   console.log(`daiTokenAddress on current chain:${daiTokenAddress}`);
+  // check if Dai is borrowable  or available in the pool:
+  const daiData = await lendingPool.getReserveData(daiTokenAddress);
+  const aDaiAddress = daiData.aTokenAddress;
+  const dai = await ethers.getContractAt("IERC20", daiTokenAddress);
+  const availableLiquidity = await dai.balanceOf(aDaiAddress);
+  console.log(
+    `✅ Available DAI liquidity: ${ethers.utils.formatUnits(availableLiquidity, 18)} DAI`
+  );
 
-  //await printAaveUserData(lendingPool, deployer);
+  await printAaveUserData(lendingPool, deployer);
 
   await borrowDai(daiTokenAddress, lendingPool, amountDaiToBorrowWei, deployer);
-  await getBorrowUserData(lendingPool, deployer);
+  await getBorrowUserData(lendingPool, deployerAddress);
 }
 //youtube: 20:09:14
 async function borrowDai(
@@ -107,15 +130,21 @@ async function borrowDai(
     );
     return;
   }
-  const borrowTx = await lendingPool.borrow(
-    daiAddress,
-    amountDaiToBorrowWei,
-    1,
-    0,
-    account
-  );
-  await borrowTx.wait(1);
-  console.log("You've borrowed");
+  try {
+    const borrowTx = await lendingPool.borrow(
+      daiAddress,
+      amountDaiToBorrowWei,
+      2,
+      0,
+      account
+    );
+    await borrowTx.wait(1);
+    console.log("You've borrowed");
+  } catch (error) {
+    console.log(
+      `❌ Borrow failed:", ${error.reason || error.message || error}`
+    );
+  }
 }
 
 // use chainlink aggregator to convert Eth into Dai
@@ -136,53 +165,120 @@ async function getDaiPrice(daiEthAddress) {
 // but first check your account's health factor, lest getting liquidated
 
 async function getBorrowUserData(lendingPool, account) {
-  const { totalCollateralETH, totalDebtETH, availableBorrowsETH } =
-    await lendingPool.getUserAccountData(account);
-  console.log(`you have ${totalCollateralETH} ETH total deposited`);
-  console.log(`you have ${totalDebtETH} ETH borrowed`);
-  console.log(`you can borrow ${availableBorrowsETH} ETH`);
-  return { availableBorrowsETH, totalDebtETH };
+  try {
+    // Fetch user account data
+    const userData = await lendingPool.getUserAccountData(account);
+
+    // Extract the values from the userData (array of BigNumbers)
+    const totalCollateralBase = userData[0]; // totalCollateralETH
+    const totalDebtBase = userData[1]; // totalDebtETH
+    const availableBorrowsBase = userData[2]; // availableBorrowsETH
+
+    // Format and log the values
+    console.log(
+      `you have ${ethers.utils.formatUnits(totalCollateralBase, 8)} USD total deposited`
+    );
+    console.log(
+      `you have ${ethers.utils.formatUnits(totalDebtBase, 8)} USD borrowed`
+    );
+    console.log(
+      `you can borrow ${ethers.utils.formatUnits(availableBorrowsBase, 8)} USD`
+    );
+
+    // Return the extracted and formatted values
+    return { availableBorrowsBase, totalDebtBase };
+  } catch (err) {
+    console.log("❌ Failed to fetch user account data", err);
+    return {
+      availableBorrowsBase: ethers.BigNumber.from(0),
+      totalDebtBase: ethers.BigNumber.from(0),
+    };
+  }
 }
 
 async function printAaveUserData(lendingPool, userAddress) {
-  const data = await lendingPool.getUserAccountData(userAddress);
+  try {
+    const data = await lendingPool.getUserAccountData(userAddress);
+    console.log("📊 Aave Account Data:");
+    console.log(data);
 
-  console.log("📊 Aave Account Data:");
-  console.log(
-    `- Total Collateral (ETH): ${ethers.utils.formatEther(data.totalCollateralETH)}`
-  );
-  console.log(
-    `- Total Debt (ETH): ${ethers.utils.formatEther(data.totalDebtETH)}`
-  );
-  console.log(
-    `- Available to Borrow (ETH): ${ethers.utils.formatEther(data.availableBorrowsETH)}`
-  );
-  console.log(
-    `- Liquidation Threshold: ${data.currentLiquidationThreshold.toString()}`
-  );
-  console.log(`- Loan-To-Value (LTV): ${data.ltv.toString()}`);
-  console.log(
-    `- Health Factor: ${ethers.utils.formatUnits(data.healthFactor, 18)}`
-  );
+    if (data.totalCollateralBase !== undefined) {
+      console.log(
+        `- Total Collateral (ETH): ${ethers.utils.formatEther(data.totalCollateralBase)}`
+      );
+    } else {
+      console.log("⚠️ totalCollateralBase is undefined");
+    }
+
+    if (data.totalDebtBase !== undefined) {
+      console.log(
+        `- Total Debt (ETH): ${ethers.utils.formatEther(data.totalDebtBase)}`
+      );
+    } else {
+      console.log("⚠️ totalDebtBase is undefined");
+    }
+
+    if (data.availableBorrowsBase !== undefined) {
+      console.log(
+        `- Available to Borrow (ETH): ${ethers.utils.formatEther(data.availableBorrowsBase)}`
+      );
+    } else {
+      console.log("⚠️ availableBorrowsBase is undefined");
+    }
+
+    console.log(
+      `- Liquidation Threshold: ${data.currentLiquidationThreshold?.toString() ?? "N/A"}`
+    );
+    console.log(`- Loan-To-Value (LTV): ${data.ltv?.toString() ?? "N/A"}`);
+
+    if (data.healthFactor !== undefined) {
+      console.log(
+        `- Health Factor: ${ethers.utils.formatUnits(data.healthFactor, 18)}`
+      );
+    } else {
+      console.log("⚠️ Health Factor is undefined (likely no debt/collateral)");
+    }
+  } catch (err) {
+    console.error("❌ Failed to fetch or parse Aave user data:", err.message);
+  }
 }
 
-async function getLendingPool(account, lendingPoolAddressesProviderAddress) {
+async function getLendingPool(account, iPoolAddressesProviderAddress, abi) {
   // ILendingPoolAddressesProvider (v2) Mainnet 0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5
   // ILendingPoolAddressesProvider (v2) Sepolia Testnet: 0x88600eacb89bcbe57ab2bdac776afba6b2c105e2
-  const lendingPoolAddressesProvider = await ethers.getContractAt(
-    "ILendingPoolAddressesProvider",
-    lendingPoolAddressesProviderAddress,
+  const IPoolAddressesProvider = await ethers.getContractAt(
+    "IPoolAddressesProvider",
+    iPoolAddressesProviderAddress,
     account
   );
   // using the getLendingPool() in the lendingPoolAddressesProvider contract
-  const lendingPoolAddress =
-    await lendingPoolAddressesProvider.getLendingPool();
+  const IPoolAddress = await IPoolAddressesProvider.getPool();
+  //
+  // //hardhat interface way:
+  // const lendingPool = await ethers.getContractAt(
+  //   "ILendingPool",
+  //   lendingPoolAddress,
+  //   account
+  // );
+
+  // "hard-coding" way for testing/debugging undefined contract
   const lendingPool = await ethers.getContractAt(
-    "ILendingPool",
-    lendingPoolAddress,
+    "IPool",
+    IPoolAddress,
     account
   );
+
   return lendingPool;
+}
+
+async function confirmSupply(lendingPool, assetAddress, userAddress) {
+  const reserveData = await lendingPool.getReserveData(assetAddress);
+  const aTokenAddress = reserveData.aTokenAddress;
+  const aToken = await ethers.getContractAt("IERC20", aTokenAddress);
+  const aTokenBalance = await aToken.balanceOf(userAddress);
+  console.log(
+    `✅ aToken balance for supplied asset: ${ethers.utils.formatEther(aTokenBalance)}`
+  );
 }
 
 async function approveErc20(
