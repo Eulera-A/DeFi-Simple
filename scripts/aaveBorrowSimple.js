@@ -104,7 +104,10 @@ async function main() {
   // check if Dai is borrowable  or available in the pool:
   const daiData = await lendingPool.getReserveData(daiTokenAddress);
   const aDaiAddress = daiData.aTokenAddress;
-  const dai = await ethers.getContractAt("IERC20", daiTokenAddress);
+  const dai = await ethers.getContractAt(
+    "contracts/interfaces/IERC20.sol:IERC20",
+    daiTokenAddress
+  );
   const availableLiquidity = await dai.balanceOf(aDaiAddress);
   console.log(
     `✅ Available DAI liquidity: ${ethers.utils.formatUnits(availableLiquidity, 18)} DAI`
@@ -299,7 +302,10 @@ async function getLendingPool(account, iPoolAddressesProviderAddress, abi) {
 async function confirmSupply(lendingPool, assetAddress, userAddress) {
   const reserveData = await lendingPool.getReserveData(assetAddress);
   const aTokenAddress = reserveData.aTokenAddress;
-  const aToken = await ethers.getContractAt("IERC20", aTokenAddress);
+  const aToken = await ethers.getContractAt(
+    "contracts/interfaces/IERC20.sol:IERC20",
+    aTokenAddress
+  );
   const aTokenBalance = await aToken.balanceOf(userAddress);
   console.log(
     `✅ aToken balance for supplied asset: ${ethers.utils.formatEther(aTokenBalance)}`
@@ -313,7 +319,7 @@ async function approveErc20(
   account
 ) {
   const erc20Token = await ethers.getContractAt(
-    "IERC20",
+    "contracts/interfaces/IERC20.sol:IERC20",
     erc20Address,
     account
   );
