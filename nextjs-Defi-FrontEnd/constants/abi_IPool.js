@@ -1,4 +1,4 @@
-export const abi_IPoolAddressesProvider = [
+export const abi_IPool = [
   {
     anonymous: false,
     inputs: [
