@@ -294,6 +294,7 @@ console.log(`your daiToken contract will be at : ${daiToken}`)
     
             // Call the function getUserAccountData
             const deployerAddress = await signer.getAddress();
+            console.log(deployerAddress)
             const userData = await lendingPoolContract.getUserAccountData(deployerAddress);
           
             console.log(userData)
