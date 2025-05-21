@@ -1,6 +1,8 @@
 "use client"
 import { useEffect, useState } from "react"
-import { ethers, parseEther, parseUnits, formatUnits,BrowserProvider } from "ethers"
+import { ethers, parseEther, parseUnits,BrowserProvider } from "ethers"
+import { formatUnits } from '@ethersproject/units';
+
 import { useMoralis, useWeb3Contract } from "react-moralis"
 import { useNotification } from "web3uikit"
 import { requestSignerWithPrompt } from "../utils/web3Helpers";
@@ -33,7 +35,7 @@ export default function DefiAaveBorrow() {
         IPoolAddressesProvider: poolAddressesProviderAddress,
         wethToken,
         daiToken,
-        priceFeedAddress: PriceFeedContractAddress,
+        daiEthPriceFeed: PriceFeedContractAddress,
     } = config
 console.log(`we are on chain: ${chainId}`)
 console.log(`your IWeth contract will be at : ${wethToken}`)
@@ -291,9 +293,10 @@ console.log(`your daiToken contract will be at : ${daiToken}`)
             );
     
             // Call the function getUserAccountData
-            const userData = await lendingPoolContract.getUserAccountData(account);
+            const deployerAddress = await signer.getAddress();
+            const userData = await lendingPoolContract.getUserAccountData(deployerAddress);
           
-        console.log(userData)
+            console.log(userData)
             // Extract the values from the userData (array of BigNumbers)
             const totalCollateralBase = userData[0]; // totalCollateralETH
             const totalDebtBase = userData[1]; // totalDebtETH
@@ -301,13 +304,13 @@ console.log(`your daiToken contract will be at : ${daiToken}`)
         
             // Format and log the values
             console.log(
-              `you have ${ethers.utils.formatUnits(totalCollateralBase, 8)} USD total deposited`
+              `you have ${formatUnits(totalCollateralBase, 8)} USD total deposited`
             );
             console.log(
-              `you have ${ethers.utils.formatUnits(totalDebtBase, 8)} USD borrowed`
+              `you have ${formatUnits(totalDebtBase, 8)} USD borrowed`
             );
             console.log(
-              `you can borrow ${ethers.utils.formatUnits(availableBorrowsBase, 8)} USD`
+              `you can borrow ${formatUnits(availableBorrowsBase, 8)} USD`
             );
 
             setAccountData({
@@ -392,7 +395,7 @@ console.log(`your daiToken contract will be at : ${daiToken}`)
             )}
     
             {PriceFeedContractAddress && (
-                <div className="fixed bottom-4 right-4 bg-white shadow-lg rounded-lg p-4 z-50">
+                <div className="fixed bottom-2 right-4 bg-white shadow-lg rounded-lg p-4 z-50">
                     <PriceFeedCheck priceFeedAddress={PriceFeedContractAddress} />
                 </div>
             )}

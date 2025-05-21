@@ -196,7 +196,7 @@ async function getBorrowUserData(lendingPool, account) {
   try {
     // Fetch user account data
     const userData = await lendingPool.getUserAccountData(account);
-
+    console.log(userData);
     // Extract the values from the userData (array of BigNumbers)
     const totalCollateralBase = userData[0]; // totalCollateralETH
     const totalDebtBase = userData[1]; // totalDebtETH
