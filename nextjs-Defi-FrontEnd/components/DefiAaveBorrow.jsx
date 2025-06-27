@@ -294,15 +294,14 @@ console.log(`your daiToken contract will be at : ${daiToken}`)
     
             // Call the function getUserAccountData
             const deployerAddress = await signer.getAddress();
-            console.log(deployerAddress)
+            console.log(`the signer's address is: ${deployerAddress}`)
+            console.log(`the set accout is: ${account}`)
             const userData = await lendingPoolContract.getUserAccountData(deployerAddress);
           
             console.log(userData)
             // Extract the values from the userData (array of BigNumbers)
-            const totalCollateralBase = userData[0]; // totalCollateralETH
-            const totalDebtBase = userData[1]; // totalDebtETH
-            const availableBorrowsBase = userData[2]; // availableBorrowsETH
-        
+            const {totalCollateralBase,totalDebtBase,availableBorrowsBase} = userData; // totalCollateralETH
+            
             // Format and log the values
             console.log(
               `you have ${formatUnits(totalCollateralBase, 8)} USD total deposited`
@@ -323,7 +322,7 @@ console.log(`your daiToken contract will be at : ${daiToken}`)
         
             
           } catch (err) {
-            console.log("❌ Failed to fetch user account data", err);
+            console.log(`❌ Failed to fetch user account data, ${err}`);
             
           }
 

@@ -69,42 +69,4 @@ contract SimpleFlashloanV3 is FlashLoanReceiverBase {
             0 // referralCode
         );
     }
-
-    // function _flashloan(
-    //     address[] memory assets,
-    //     uint256[] memory amounts
-    // ) internal {
-    //     address receiverAddress = address(this);
-    //     address onBehalfOf = address(this);
-    //     bytes memory params = "";
-    //     uint16 referralCode = 0;
-
-    //     uint256[] memory modes = new uint256[](assets.length);
-    //     for (uint256 i = 0; i < assets.length; i++) {
-    //         modes[i] = 0;
-    //     }
-
-    //     pool.flashLoan(
-    //         receiverAddress,
-    //         assets,
-    //         amounts,
-    //         modes,
-    //         onBehalfOf,
-    //         params,
-    //         referralCode
-    //     );
-    // }
-
-    // function flashloan(address _asset) public {
-    //     bytes memory data = "";
-    //     uint256 amount = 100000000000000000;
-
-    //     address[] memory assets = new address[](1);
-    //     assets[0] = _asset;
-
-    //     uint256[] memory amounts = new uint256[](1);
-    //     amounts[0] = amount;
-
-    //     _flashloan(assets, amounts);
-    // }
 }

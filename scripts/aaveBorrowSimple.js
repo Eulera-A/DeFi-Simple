@@ -279,7 +279,7 @@ async function getLendingPool(account, iPoolAddressesProviderAddress, abi) {
     iPoolAddressesProviderAddress,
     account
   );
-  // using the getLendingPool() in the lendingPoolAddressesProvider contract
+
   const IPoolAddress = await IPoolAddressesProvider.getPool();
   //
   // //hardhat interface way:
