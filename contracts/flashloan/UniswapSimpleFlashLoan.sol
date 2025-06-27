@@ -1,139 +1,122 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
-// import {IFlashLoanReceiver} from "./IFlashLoanReceiver.sol";
-// import {FlashLoanReceiverBase} from "./FlashLoanReceiverBase.sol";
-// import {IPoolAddressesProvider} from "../interfaces/IPoolAddressesProvider.sol";
-// import {IPool} from "../interfaces/IPool.sol";
-// import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {IFlashLoanReceiver} from "./IFlashLoanReceiver.sol";
+import {FlashLoanReceiverBase} from "./FlashLoanReceiverBase.sol";
+import {IPoolAddressesProvider} from "../interfaces/IPoolAddressesProvider.sol";
+import {IPool} from "../interfaces/IPool.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-// contract SimpleFlashloanV3 is FlashLoanReceiverBase {
-//     IPoolAddressesProvider public immutable addressesProvider;
-//     IPool public immutable pool;
-//     IUniswapV2Router02 public uniswapRouter;
+interface IUniswapRouter {
+    function swapExactTokensForTokens(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external returns (uint256[] memory);
+}
 
-//     // Event declarations
-//     event FlashloanExecuted(
-//         address indexed user,
-//         address[] assets,
-//         uint256[] amounts
-//     );
-//     event SwapExecuted(
-//         address indexed user,
-//         address fromToken,
-//         address toToken,
-//         uint256 amountIn,
-//         uint256 amountOut
-//     );
+contract UniswapSimpleFlashLoan is FlashLoanReceiverBase {
+    IPoolAddressesProvider public immutable addressesProvider;
+    IPool public immutable pool;
+    address public router; // Uniswap router
+    address public immutable tokenOutAddress;
+    uint256 public immutable minSwappedOutAmount;
 
-//     constructor(
-//         address _addressProvider,
-//         address _uniswapRouter
-//     ) FlashLoanReceiverBase(IPoolAddressesProvider(_addressProvider)) {
-//         addressesProvider = IPoolAddressesProvider(_addressProvider);
-//         pool = IPool(addressesProvider.getPool());
-//         uniswapRouter = IUniswapV2Router02(_uniswapRouter);
-//     }
+    constructor(
+        address _addressProvider,
+        address _router,
+        address _tokenOutAddress,
+        uint256 _minSwappedOutAmount
+    ) FlashLoanReceiverBase(IPoolAddressesProvider(_addressProvider)) {
+        addressesProvider = IPoolAddressesProvider(_addressProvider);
+        pool = IPool(addressesProvider.getPool());
+        router = _router;
+        tokenOutAddress = _tokenOutAddress;
+        minSwappedOutAmount = _minSwappedOutAmount;
+    }
 
-//     // This function is called by the Aave pool during the flashloan process
-//     function executeOperation(
-//         address[] calldata assets,
-//         uint256[] calldata amounts,
-//         uint256[] calldata premiums,
-//         address initiator,
-//         bytes calldata params
-//     ) external override returns (bool) {
-//         // Emit the FlashloanExecuted event
-//         emit FlashloanExecuted(initiator, assets, amounts);
+    function executeOperation(
+        address[] calldata assets,
+        uint256[] calldata amounts,
+        uint256[] calldata premiums,
+        address initiator,
+        bytes calldata params
+    ) external override returns (bool) {
+        address user = abi.decode(params, (address));
 
-//         // Swap the flashloaned token for another token (example: USDC -> ETH)
-//         address fromToken = assets[0]; // The token we borrowed (e.g., USDC)
-//         address toToken = 0xC02aaA39F5cC3fDA33E2e9eA63F5B14fce0337D6; // Example: WETH address on mainnet
+        // uniswap process:
 
-//         uint256 amountToSwap = amounts[0]; // Amount we borrowed
-//         uint256 amountOwing = amounts[0] + premiums[0]; // Amount we need to repay
+        for (uint256 i = 0; i < assets.length; i++) {
+            IERC20 tokenIn = IERC20(assets[i]); // the flash-borrowed WETH
+            address tokenOut = address(tokenOutAddress); // your choice of swapped currencies, DAI/USDC etc...
 
-//         // Approve the Uniswap Router to spend the borrowed token
-//         IERC20(fromToken).approve(address(uniswapRouter), amountToSwap);
+            // Approve router to spend flashloaned tokenIn
+            tokenIn.approve(router, amounts[i]);
 
-//         // Path for the swap: [USDC -> WETH]
-//         address; // Declare a memory array with 2 elements
-//         path[0] = fromToken;
-//         path[1] = toToken;
+            // Prepare swap path
+            address[] memory path = new address[](2);
+            path[0] = assets[i];
+            path[1] = tokenOut;
 
-//         // Execute the swap on Uniswap
-//         uint256[] memory amountsOut = uniswapRouter.getAmountsOut(
-//             amountToSwap,
-//             path
-//         );
-//         uint256 amountOutMin = amountsOut[1]; // Minimum amount of WETH to receive
+            // Simulate swap for profit
+            IUniswapRouter(router).swapExactTokensForTokens(
+                amounts[i],
+                minSwappedOutAmount, // accept any amount for mock only!!! Not safe for mainnet!!!
+                path,
+                address(this), // receive the swapped tokens into this same contract
+                block.timestamp // deadline for swap
+            );
 
-//         // Perform the swap
-//         uniswapRouter.swapExactTokensForTokens(
-//             amountToSwap,
-//             amountOutMin,
-//             path,
-//             address(this),
-//             block.timestamp
-//         );
+            // swap back my WETH so i can pay back the loan
+            // After getting tokenOut (e.g., DAI), swap some of it back to WETH
 
-//         // Now we have WETH, let's make sure we have enough to repay the loan
-//         uint256 amountReceived = IERC20(toToken).balanceOf(address(this));
-//         require(
-//             amountReceived >= amountOwing,
-//             "Not enough received to repay loan"
-//         );
+            // Calculate amount to repay
+            uint256 amountOwing = amounts[i] + premiums[i];
 
-//         // Repay the flashloan with the swapped token (WETH in this case)
-//         IERC20(toToken).approve(address(pool), amountOwing);
+            // Swap back tokenOut -> tokenIn to repay loan
+            IERC20(tokenOut).approve(router, type(uint256).max);
+            address[] memory reversePath = new address[](2);
+            reversePath[0] = tokenOut; // the swapped token
+            reversePath[1] = assets[i]; // the WETH/ flash borrowed assets
 
-//         // Emit the SwapExecuted event
-//         emit SwapExecuted(
-//             initiator,
-//             fromToken,
-//             toToken,
-//             amountToSwap,
-//             amountReceived
-//         );
+            IUniswapRouter(router).swapExactTokensForTokens(
+                amountOwing,
+                0,
+                reversePath,
+                address(this),
+                block.timestamp
+            );
 
-//         return true;
-//     }
+            // Approve repayment
+            tokenIn.approve(address(pool), amountOwing);
+        }
 
-//     function _flashloan(
-//         address[] memory assets,
-//         uint256[] memory amounts
-//     ) internal {
-//         address receiverAddress = address(this);
-//         address onBehalfOf = msg.sender; // The user initiating the loan
-//         bytes memory params = ""; // No custom params for now
-//         uint16 referralCode = 0;
+        return true;
+    }
 
-//         uint256[] memory modes = new uint256[](assets.length);
-//         for (uint256 i = 0; i < assets.length; i++) {
-//             modes[i] = 0; // 0 = no debt (flashloan)
-//         }
+    function flashloan(
+        address[] calldata assets,
+        uint256[] calldata amounts
+    ) external {
+        require(assets.length == amounts.length, "Mismatched inputs");
 
-//         pool.flashLoan(
-//             receiverAddress,
-//             assets,
-//             amounts,
-//             modes,
-//             onBehalfOf,
-//             params,
-//             referralCode
-//         );
-//     }
+        uint256[] memory modes = new uint256[](assets.length);
+        for (uint256 i = 0; i < assets.length; i++) {
+            modes[i] = 0; // 0 = flashloan
+        }
 
-//     function flashloan(address _asset) external {
-//         uint256 amount = 100000000000000000; // 0.1 Ether in wei
+        bytes memory params = abi.encode(msg.sender);
 
-//         address;
-//         assets[0] = _asset;
-
-//         uint256;
-//         amounts[0] = amount;
-
-//         _flashloan(assets, amounts);
-//     }
-// }
+        pool.flashLoan(
+            address(this), //receiver (the flashloan contract)
+            assets, // asset flash-borrowed
+            amounts, // amount flash-borrowed
+            modes, //mode 0 for flash loan!! always
+            msg.sender, //on beHalf of, which is the user!
+            params, // passed to executeOperations
+            0 // referralCode
+        );
+    }
+}
