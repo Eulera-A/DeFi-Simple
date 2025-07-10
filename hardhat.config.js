@@ -120,8 +120,16 @@ module.exports = {
       {
         version: "0.6.12",
       },
+      { version: "0.8.0" },
       {
-        version: "0.8.20",
+        version: "0.8.21",
+        settings: {
+          viaIR: true,
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
       },
     ],
   },

@@ -1,16 +1,25 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.21;
 
 import {IFlashLoanReceiver} from "./IFlashLoanReceiver.sol";
 import {FlashLoanReceiverBase} from "./FlashLoanReceiverBase.sol";
 import {IPoolAddressesProvider} from "../interfaces/IPoolAddressesProvider.sol";
 import {IPool} from "../interfaces/IPool.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "hardhat/console.sol";
 
 interface IUniswapRouter {
     function swapExactTokensForTokens(
         uint256 amountIn,
         uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external returns (uint256[] memory);
+
+    function swapTokensForExactTokens(
+        uint256 amountOut,
+        uint256 amountInMax,
         address[] calldata path,
         address to,
         uint256 deadline
@@ -55,10 +64,14 @@ contract UniswapSimpleFlashLoan is FlashLoanReceiverBase {
             // Approve router to spend flashloaned tokenIn
             tokenIn.approve(router, amounts[i]);
 
+            console.log("approved router spend amount:", amounts[i]);
+
             // Prepare swap path
             address[] memory path = new address[](2);
             path[0] = assets[i];
             path[1] = tokenOut;
+            console.log("tokenIn address:", assets[i]);
+            console.log("tokenOut address:", tokenOut);
 
             // Simulate swap for profit
             IUniswapRouter(router).swapExactTokensForTokens(
@@ -74,6 +87,7 @@ contract UniswapSimpleFlashLoan is FlashLoanReceiverBase {
 
             // Calculate amount to repay
             uint256 amountOwing = amounts[i] + premiums[i];
+            console.log("amount Owing (with premiums)", amountOwing);
 
             // Swap back tokenOut -> tokenIn to repay loan
             IERC20(tokenOut).approve(router, type(uint256).max);
@@ -81,9 +95,9 @@ contract UniswapSimpleFlashLoan is FlashLoanReceiverBase {
             reversePath[0] = tokenOut; // the swapped token
             reversePath[1] = assets[i]; // the WETH/ flash borrowed assets
 
-            IUniswapRouter(router).swapExactTokensForTokens(
+            IUniswapRouter(router).swapTokensForExactTokens(
                 amountOwing,
-                0,
+                type(uint256).max,
                 reversePath,
                 address(this),
                 block.timestamp
