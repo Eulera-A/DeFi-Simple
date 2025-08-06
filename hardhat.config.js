@@ -55,6 +55,8 @@ module.exports = {
       //   },
       saveDeployments: true,
       chainId: 11155111,
+      PoolAddressProvider: "0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e",
+      UniswapV2Router: "0x86dcd3293C53Cf8EFd7303B57beb2a3F671dDE98",
     },
     mainnet: {
       url: MAINNET_RPC_URL,

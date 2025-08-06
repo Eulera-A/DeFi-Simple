@@ -2,6 +2,7 @@ import Head from "next/head";
 import styles from "../styles/Home.module.css";
 import Header from "../components/Header";
 import DefiAaveBorrow from "../components/DefiAaveBorrow"; // You'll create this
+import FlashloanExecutor from "../components/FlashloanExecutor"; // You'll create this
 import { useMoralis } from "react-moralis";
 import { useEffect, useState } from "react";
 import { ethers, BrowserProvider } from "ethers";
@@ -64,8 +65,14 @@ export default function Home() {
             <strong>{networkName || "Loading..."}</strong>
           </p>
           {supportedChains.includes(parseInt(chainId).toString()) ? (
-            <div className="flex flex-row">
-              <DefiAaveBorrow className="p-8" />
+            <div className="flex flex-col space-y-10">
+              <div className="p-8 border rounded shadow bg-white">
+                <DefiAaveBorrow />
+              </div>
+
+              <div className="p-8 border rounded shadow bg-white">
+                <FlashloanExecutor />
+              </div>
             </div>
           ) : (
             <div>
