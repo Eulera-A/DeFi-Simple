@@ -1,5 +1,6 @@
 export const networkConfig = {
   31337: {
+    // these values are on mainnet, since we forked it
     name: "localhost",
     wethToken: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
     lendingPoolAddressesProvider: "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5",
@@ -10,13 +11,13 @@ export const networkConfig = {
   11155111: {
     name: "sepolia",
     ethUsdPriceFeed: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
-    wethToken: "0xA70dc554504E93712c11BE6d7E747536F52321f1",
+    wethToken: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
     // This is the AaveV2 Lending Pool Addresses Provider
-    lendingPoolAddressesProvider: "0x88600eacb89bcbe57ab2bdac776afba6b2c105e2",
-    // This is LINK/ETH feed
-    //daiEthPriceFeed: "0xb4c4a493AB6356497713A78FFA6c60FB53517c63",
-    // This is the LINK token
-    //daiToken: "0x326C977E6efc84E512bB9C30f76E30c160eD06FB",
+    lendingPoolAddressesProvider: "...",
+    IPoolAddressesProvider: "0xB5d0ef1548D9C70d3E7a96cA67A2d7EbC5b1173E",
+
+    daiEthPriceFeed: "0x773616e4d11a78f511299002da57a0a94577f1f4",
+    daiToken: "0x68194a729C2450ad26072b3D33ADaCbcef39D574",
   },
   // Due to the different testnets, we are leaving kovan in as a reference
   42: {

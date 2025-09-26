@@ -1,9 +1,9 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { ethers, parseEther, parseUnits,BrowserProvider } from "ethers"
 import { formatUnits } from '@ethersproject/units';
 
-import { useMoralis, useWeb3Contract } from "react-moralis"
+import { useMoralis } from "react-moralis"
 import { useNotification } from "web3uikit"
 import { requestSignerWithPrompt } from "../utils/web3Helpers";
 
@@ -30,13 +30,14 @@ export default function DefiAaveBorrow() {
     const dispatch = useNotification()
 
    
-    const config = networkConfig[chainId] || {}
-    const {
-        IPoolAddressesProvider: poolAddressesProviderAddress,
-        wethToken,
-        daiToken,
-        daiEthPriceFeed: PriceFeedContractAddress,
-    } = config
+const config = useMemo(() => networkConfig[chainId] || {}, [chainId]);
+
+const {
+    IPoolAddressesProvider: poolAddressesProviderAddress,
+    wethToken,
+    daiToken,
+    daiEthPriceFeed: PriceFeedContractAddress,
+} = config;
 console.log(`we are on chain: ${chainId}`)
 console.log(`your IWeth contract will be at : ${wethToken}`)
 console.log(`your daiToken contract will be at : ${daiToken}`)
@@ -53,12 +54,7 @@ console.log(`your daiToken contract will be at : ${daiToken}`)
         }
     }, [PriceFeedContractAddress])
 
-    const { runContractFunction: getUserAccountData } = useWeb3Contract({
-        abi: abi_IPool,
-        contractAddress: lendingPoolAddress,
-        functionName: "getUserAccountData",
-        params: { user: account },
-    })
+
 
 
    useEffect(() => {
@@ -353,9 +349,9 @@ console.log("signer:", signer)
             {accountData && (
                 <div className="mt-6 p-4 border rounded bg-gray-50">
                     <h3 className="font-semibold mb-2">📊 Aave Account Data</h3>
-                    <p>Total Collateral: {accountData.totalCollateral} ETH</p>
-                    <p>Total Debt: {accountData.totalDebt} ETH</p>
-                    <p>Available to Borrow: {accountData.availableBorrow} ETH</p>
+                    <p>Total Collateral: {accountData.totalCollateral} WETH</p>
+                    <p>Total Debt: {accountData.totalDebt} WETH</p>
+                    <p>Available to Borrow: {accountData.availableBorrow} WETH</p>
                     <p>Health Factor: {accountData.healthFactor}</p>
                 </div>
             )}
