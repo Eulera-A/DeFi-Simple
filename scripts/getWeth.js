@@ -1,10 +1,10 @@
 const { getNamedAccounts, ethers } = require("hardhat");
-const AMOUNT = ethers.utils.parseEther("5");
+const AMOUNT = ethers.utils.parseEther("20");
 
 async function getWeth() {
   const { deployer } = await getNamedAccounts();
   const signer = await ethers.getSigner(deployer); // 🔥 FIX HERE, need to get the Signer object, not just an address
-
+  //console.log(`getWeth function input amount: ${amount}`);
   // call the "deposit" function on the weth contract
   // need: abi, contract adress from weth mainnet: but ofcourse, we are testing/working on the forked mainnet
   // 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2

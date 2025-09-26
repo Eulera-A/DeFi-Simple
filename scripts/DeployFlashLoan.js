@@ -38,8 +38,8 @@ async function main() {
 
     const RouterMock = await ethers.getContractFactory("UniswapRouterMock");
     const routerMock = await RouterMock.deploy(
-      tokenIn.address,
-      tokenOutMock.address
+      tokenIn.address
+      //tokenOutMock.address
     );
 
     const PoolMock = await ethers.getContractFactory("PoolMock");
@@ -50,6 +50,7 @@ async function main() {
     const ProviderMock = await ethers.getContractFactory("ProviderMock");
     const providerMock = await ProviderMock.deploy(poolMock.address);
     console.log("pool address provider mock deployed");
+    s;
 
     addressProvider = providerMock.address;
     uniswapRouter = routerMock.address;

@@ -8,6 +8,7 @@ const {
 async function main() {
   //house-keeping:
   const chainId = network.config.chainId;
+  //const AMOUNT = 12;
 
   // 1st: deposit our real eth into weth contract
   await getWeth();

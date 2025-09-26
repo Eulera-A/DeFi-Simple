@@ -45,12 +45,7 @@ console.log(`your daiToken contract will be at : ${daiToken}`)
         dispatch({ type, message, title, position: "topR" })
     }
 
-    const { runContractFunction: getPool } = useWeb3Contract({
-        abi: abi_IPoolAddressesProvider,
-        contractAddress: poolAddressesProviderAddress,
-        functionName: "getPool",
-        params: {},
-    })
+
 
     useEffect(() => {
         if (PriceFeedContractAddress) {
@@ -65,22 +60,39 @@ console.log(`your daiToken contract will be at : ${daiToken}`)
         params: { user: account },
     })
 
-    useEffect(() => {
-        const fetchLendingPoolAddress = async () => {
-            if (isWeb3Enabled && poolAddressesProviderAddress) {
-                try {
-                    const result = await getPool()
-                    setLendingPoolAddress(result)
-                    notify("success", "Lending pool address loaded")
-                } catch (err) {
-                    console.error("Failed to fetch lending pool:", err)
-                    notify("error", "Could not get pool address")
+
+   useEffect(() => {
+    const fetchLendingPoolAddress = async () => {
+        if (isWeb3Enabled && poolAddressesProviderAddress && signer) {
+            try {
+              //use native ether way:
+              const providerContract = new ethers.Contract(
+            poolAddressesProviderAddress,
+            abi_IPoolAddressesProvider,
+            signer
+        );
+
+        const IPoolAddress = await providerContract.getPool(); // ✔️ Now this is a real call
+  if (!IPoolAddress || IPoolAddress === ethers.ZeroAddress) {
+                    throw new Error("Invalid IPool address returned.");
                 }
+        console.log("✅ IPoolAddress fetched:", IPoolAddress);
+
+        setLendingPoolAddress(IPoolAddress); // this updates state
+
+        notify("success", "Lending pool address loaded");
+
+
+
+            } catch (err) {
+                console.error("Failed to fetch lending pool:", err);
+                notify("error", "Could not get pool address");
             }
         }
+    };
 
-        fetchLendingPoolAddress()
-    }, [isWeb3Enabled, chainId,poolAddressesProviderAddress])
+    fetchLendingPoolAddress();
+}, [isWeb3Enabled, chainId, poolAddressesProviderAddress, signer]);
 
 
     useEffect(() => {
@@ -116,19 +128,7 @@ console.log(`your daiToken contract will be at : ${daiToken}`)
             }
     
            
-            // console.log(`Try gettin signer...`)
-            // let signer
-            // try {
-            //     signer = await requestSignerWithPrompt();
-            // } catch (err) {
-            //     if (err.code === -32002) {
-            //         notify("warning", "Wallet request already pending. Check MetaMask.");
-            //     } else {
-            //         console.error("Wallet connect error:", err);
-            //         notify("error", "Could not connect wallet");
-            //     }
-            //     return;
-            // }
+        
 
             console.log(`Getting iWETH contract at ${wethToken}`);
             const weth = new ethers.Contract(wethToken, abi_IWeth, signer);
@@ -146,200 +146,166 @@ console.log(`your daiToken contract will be at : ${daiToken}`)
             setStatus("Wrap Failed");
         }
     };
-    const {
-        runContractFunction: approveWETH
-      } = useWeb3Contract({
-        abi: abi_IERC20,
-        contractAddress: wethToken,
-        functionName: "approve",
-        params: {
-          spender: lendingPoolAddress,
-          amount: parseEther(ethAmount || "0"),
-        },
-      });
-      
-      const {
-        runContractFunction: supplyWETH
-      } = useWeb3Contract({
-        abi: abi_IPool,
-        contractAddress: lendingPoolAddress,
-        functionName: "supply",
-        params: {
-          asset: wethToken,
-          amount: parseEther(ethAmount || "0"),
-          onBehalfOf: account,
-          referralCode: 0,
-        },
-      });
+ 
+
+
+      const handleApproveWETH = async () => {
+  try {
+    setStatus("Approving WETH...");
+    const weth = new ethers.Contract(wethToken, abi_IERC20, signer);
+    const tx = await weth.approve(lendingPoolAddress, parseEther(ethAmount || "0"));
+    await tx.wait();
+    notify("success", "WETH approved");
+  } catch (error) {
+    console.error("Approval failed:", error);
+    notify("error", "Approval failed");
+  }
+};
+
+const handleSupply = async () => {
+  if (!ethAmount || isNaN(ethAmount)) {
+    notify("warning", "Enter a valid ETH amount");
+    return;
+  }
+
+  try {
+    await handleApproveWETH(); // approve first
+
+    const lendingPool = new ethers.Contract(lendingPoolAddress, abi_IPool, signer);
+    setStatus("Supplying WETH...");
+    const tx = await lendingPool.supply(
+      wethToken,
+      parseEther(ethAmount),
+      account,
+      0
+    );
+    await tx.wait();
+
+    notify("success", `Supplied ${ethAmount} WETH`);
+    setStatus("Supply successful!");
+  } catch (error) {
+    console.error("Supply failed:", error);
+    notify("error", "Supply failed");
+    setStatus("Supply failed");
+  }
+};
+
     
-      const handleSupply = async () => {
-        if (!ethAmount || isNaN(ethAmount)) {
-          notify("warning", "Enter a valid ETH amount");
-          return;
-        }
-      
-        try {
-          setStatus("Approving WETH...");
-          await approveWETH();
-          notify("info", "WETH approved");
-      
-          setStatus("Supplying WETH...");
-          await supplyWETH();
-          notify("success", `Supplied ${ethAmount} WETH`);
-          setStatus("Supply successful!");
-        } catch (error) {
-          console.error(error);
-          notify("error", "Supply failed");
-          setStatus("Supply failed");
-        }
-      };
-      
-      const {runContractFunction:
-        borrowDAI} = useWeb3Contract({
-        abi: abi_IPool,
-        contractAddress: lendingPoolAddress,
-        functionName: "borrow",
-        
-    })
+   const handleBorrow = async () => {
+  if (!borrowAmount || isNaN(borrowAmount)) {
+    notify("warning", "Enter a valid DAI amount");
+    return;
+  }
 
-    const handleBorrow = async () => {
-        if (!borrowAmount || isNaN(borrowAmount)) {
-          notify("warning", "Enter a valid DAI amount");
-          return;
-        }
-      
-        const amountInWei = parseUnits(borrowAmount, 18);
-      
-        try {
-          setStatus("Borrowing DAI...");
-      
-          await borrowDAI({
-            params: {
-              asset: daiToken,
-              amount: amountInWei,
-              interestRateMode: 2,
-              referralCode: 0,
-              onBehalfOf: account,
-            },
-          });
-      
-          setStatus("Borrow successful!");
-          notify("success", `Borrowed ${borrowAmount} DAI`);
-        } catch (error) {
-          console.error(error);
-          setStatus("Borrow failed");
-          notify("error", "Borrow failed");
-        }
-      };
-      
+  try {
+    setStatus("Borrowing DAI...");
+    const lendingPool = new ethers.Contract(lendingPoolAddress, abi_IPool, signer);
 
-    const {runContractFunction:approveDAI} = useWeb3Contract({
-        abi: abi_IERC20,
-        contractAddress: daiToken,
-        functionName: "approve",
-        
-    })
+    const tx = await lendingPool.borrow(
+      daiToken,
+      parseUnits(borrowAmount, 18),
+      2, // variable interest rate mode
+      0,
+      account
+    );
 
-    const {runContractFunction:repayDAI} = useWeb3Contract({
-        abi: abi_IPool,
-        contractAddress: lendingPoolAddress,
-        functionName: "repay",
+    await tx.wait();
+    notify("success", `Borrowed ${borrowAmount} DAI`);
+    setStatus("Borrow successful!");
+  } catch (error) {
+    console.error("Borrow failed:", error);
+    notify("error", "Borrow failed");
+    setStatus("Borrow failed");
+  }
+};
+   
     
-    })
+const handleRepay = async () => {
+  if (!borrowAmount || isNaN(borrowAmount)) {
+    notify("warning", "Enter a valid DAI amount");
+    return;
+  }
 
-    const handleRepay = async () => {
-        if (!borrowAmount || isNaN(borrowAmount)) {
-            notify("warning", "Enter a valid DAI amount")
-            return
-        }
+  const amountInWei = parseUnits(borrowAmount, 18);
 
-        const amountInWei = parseUnits(borrowAmount, 18)
+  try {
+    setStatus("Approving DAI...");
+    const dai = new ethers.Contract(daiToken, abi_IERC20, signer);
+    const approveTx = await dai.approve(lendingPoolAddress, amountInWei);
+    await approveTx.wait();
 
+    const lendingPool = new ethers.Contract(lendingPoolAddress, abi_IPool, signer);
+    setStatus("Repaying DAI...");
+    const repayTx = await lendingPool.repay(daiToken, amountInWei, 2, account);
+    await repayTx.wait();
 
-        try {
-            setStatus("Approving DAI...")
-            await approveDAI({params: {
-                spender: lendingPoolAddress,
-    amount: amountInWei,
-            }})
-            setStatus("Repaying DAI...")
-            await repayDAI({params: {
-                asset: daiToken,
-                amount: amountInWei,
-                rateMode: 2,
-                onBehalfOf: account,
-            }})
-            setStatus("Repay successful!")
-            notify("success", `Repaid ${borrowAmount} DAI`)
-        } catch (error) {
-            console.error(error)
-            setStatus("Repay failed")
-            notify("error", "Repay failed")
-        }
+    setStatus("Repay successful!");
+    notify("success", `Repaid ${borrowAmount} DAI`);
+  } catch (error) {
+    console.error("Repay failed:", error);
+    setStatus("Repay failed");
+    notify("error", "Repay failed");
+  }
+};
+
+   
+
+  
+
+    
+
+    
+
+const isReady = isWeb3Enabled && account && lendingPoolAddress && signer;
+
+const handleGetUserData = async () => {
+  // fact check seeing if stuff are set up correctly
+  console.log("account:", account)
+console.log("lendingPoolAddress:", lendingPoolAddress)
+console.log("signer:", signer)
+
+  if (!isReady) {
+    notify("warning", "Pool address or signer not ready");
+    return;
+  }
+  try {
+
+    // Construct contract with signer or provider
+    const pool = new ethers.Contract(lendingPoolAddress, abi_IPool, signer);
+
+    const userAddr = await signer.getAddress();
+    console.log("Signer address:", userAddr);
+    console.log("Account (from Moralis):", account);
+    if (userAddr.toLowerCase() !== account.toLowerCase()) {
+      console.warn("Signer address and Moralis account mismatch");
     }
 
-    const handleGetUserData = async () => {
-        if (!lendingPoolAddress || !account) {
-            notify("warning", "Pool or account not available")
-            return
-        }
-        try {
-            //signer = await requestSignerWithPrompt();
+    const userData = await pool.getUserAccountData(userAddr);
+    console.log("Raw userData:", userData);
 
-            const lendingPoolContract = new ethers.Contract(
-                lendingPoolAddress,  // The lending pool address
-                abi_IPool,            // The ABI for the lending pool
-                signer                // The signer (e.g., connected wallet)
-            );
-    
-            // Call the function getUserAccountData
-            const deployerAddress = await signer.getAddress();
-            console.log(`the signer's address is: ${deployerAddress}`)
-            console.log(`the set accout is: ${account}`)
-            const userData = await lendingPoolContract.getUserAccountData(deployerAddress);
-          
-            console.log(userData)
-            // Extract the values from the userData (array of BigNumbers)
-            const {totalCollateralBase,totalDebtBase,availableBorrowsBase} = userData; // totalCollateralETH
-            
-            // Format and log the values
-            console.log(
-              `you have ${formatUnits(totalCollateralBase, 8)} USD total deposited`
-            );
-            console.log(
-              `you have ${formatUnits(totalDebtBase, 8)} USD borrowed`
-            );
-            console.log(
-              `you can borrow ${formatUnits(availableBorrowsBase, 8)} USD`
-            );
+    // userData is a tuple; e.g. [totalCollateralBase, totalDebtBase, availableBorrowsBase, ..., healthFactor, ...]
+    const totalCollateralBase = userData[0];
+    const totalDebtBase = userData[1];
+    const availableBorrowsBase = userData[2];
+    const healthFactorBN = userData[5]; // often healthFactor is index 5, check your contract
 
-            setAccountData({
-                 totalCollateral: formatUnits(totalCollateralBase, 8),
-                 totalDebt: formatUnits(totalDebtBase, 8),
-                availableBorrow: formatUnits(availableBorrowsBase, 8),
-                healthFactor: ethers.formatUnits(data.healthFactor,18)
-                    })
-        
-            
-          } catch (err) {
-            console.log(`❌ Failed to fetch user account data, ${err}`);
-            
-          }
+    console.log(
+      `Collateral: ${formatUnits(totalCollateralBase, 8)}, Debt: ${formatUnits(totalDebtBase, 8)}, Available: ${formatUnits(availableBorrowsBase, 8)}, Health: ${ethers.formatUnits(healthFactorBN, 18)}`
+    );
 
-        // try {
-        //     const data = await getUserAccountData()
-        //     setAccountData({
-        //         totalCollateral: formatUnits(data.totalCollateralBase, 18),
-        //         totalDebt: formatUnits(data.totalDebtBase, 18),
-        //         availableBorrow: formatUnits(data.availableBorrowsBase, 18),
-        //         healthFactor: parseFloat(formatUnits(data.healthFactor, 18)).toFixed(2),
-        //     })
-        //     notify("info", "Fetched account data")
-        // } catch (error) {
-        //     console.error("Failed to get user data", error)
-        //     notify("error", "Failed to get account data")
-        // }
-    }
+    setAccountData({
+      totalCollateral: formatUnits(totalCollateralBase, 8),
+      totalDebt: formatUnits(totalDebtBase, 8),
+      availableBorrow: formatUnits(availableBorrowsBase, 8),
+      healthFactor: ethers.formatUnits(healthFactorBN, 18),
+    });
+    notify("info", "Fetched user data");
+  } catch (err) {
+    console.error("❌ Failed to fetch user account data:", err);
+    notify("error", "Fetch user data failed");
+  }
+};
+
 
     return (
         <div>
