@@ -14,10 +14,12 @@ export const networkConfig = {
     wethToken: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
     // This is the AaveV2 Lending Pool Addresses Provider
     lendingPoolAddressesProvider: "...",
-    IPoolAddressesProvider: "0xB5d0ef1548D9C70d3E7a96cA67A2d7EbC5b1173E",
+    // this is the correct V3 address:
+    IPoolAddressesProvider: "0x012bAC54348C0E635dCAc9D5FB99f06F24136C9A",
 
     daiEthPriceFeed: "0x773616e4d11a78f511299002da57a0a94577f1f4",
     daiToken: "0x68194a729C2450ad26072b3D33ADaCbcef39D574",
+    UniswapV3Router: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
   },
   // Due to the different testnets, we are leaving kovan in as a reference
   42: {
