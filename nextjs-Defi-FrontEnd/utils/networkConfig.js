@@ -7,6 +7,7 @@ export const networkConfig = {
     IPoolAddressesProvider: "0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e",
     daiEthPriceFeed: "0x773616E4d11A78F511299002da57A0a94577F1f4",
     daiToken: "0x6b175474e89094c44da98b954eedeac495271d0f",
+    UniswapV3FlashLoanAddress: "0xC97f61D15ce51aa16D056106DF7F76aAe3c64090",
   },
   11155111: {
     name: "sepolia",

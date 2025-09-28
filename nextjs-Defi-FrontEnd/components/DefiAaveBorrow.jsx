@@ -28,6 +28,8 @@ export default function DefiAaveBorrow() {
     const { isWeb3Enabled, chainId: chainIdHex, account } = useMoralis()
     const chainId = parseInt(chainIdHex)
     const dispatch = useNotification()
+    const [showPriceFeed, setShowPriceFeed] = useState(false);
+
 
    
 const config = useMemo(() => networkConfig[chainId] || {}, [chainId]);
@@ -349,18 +351,39 @@ console.log("signer:", signer)
             {accountData && (
                 <div className="mt-6 p-4 border rounded bg-gray-50">
                     <h3 className="font-semibold mb-2">📊 Aave Account Data</h3>
-                    <p>Total Collateral: {accountData.totalCollateral} WETH</p>
-                    <p>Total Debt: {accountData.totalDebt} WETH</p>
-                    <p>Available to Borrow: {accountData.availableBorrow} WETH</p>
+                    <p>Total Collateral: {accountData.totalCollateral} DAI</p>
+                    <p>Total Debt: {accountData.totalDebt} DAI</p>
+                    <p>Available to Borrow: {accountData.availableBorrow} DAI</p>
                     <p>Health Factor: {accountData.healthFactor}</p>
                 </div>
             )}
+
+{PriceFeedContractAddress && !showPriceFeed && (
+  <button
+    onClick={() => setShowPriceFeed(true)}
+    className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded shadow-lg z-50"
+  >
+    📈 Show Price Feed
+  </button>
+)}
+
+{PriceFeedContractAddress && showPriceFeed && (
+  <div className="fixed bottom-2 right-4 bg-white shadow-lg rounded-lg p-4 z-50">
+    <div className="flex justify-between items-center mb-2">
+      <span className="font-semibold text-sm">Price Feed Checker</span>
+      <button
+        onClick={() => setShowPriceFeed(false)}
+        className="text-gray-400 hover:text-black"
+      >
+        ✕
+      </button>
+    </div>
+    <PriceFeedCheck priceFeedAddress={PriceFeedContractAddress} />
+  </div>
+)}
+
+
     
-            {PriceFeedContractAddress && (
-                <div className="fixed bottom-2 right-4 bg-white shadow-lg rounded-lg p-4 z-50">
-                    <PriceFeedCheck priceFeedAddress={PriceFeedContractAddress} />
-                </div>
-            )}
         </div>
     )
 }
