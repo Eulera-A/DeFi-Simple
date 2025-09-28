@@ -13,10 +13,11 @@ const networkConfig = {
     wethToken: "0xA70dc554504E93712c11BE6d7E747536F52321f1",
     // This is the AaveV2 Lending Pool Addresses Provider
     lendingPoolAddressesProvider: "0x88600eacb89bcbe57ab2bdac776afba6b2c105e2",
-    // This is LINK/ETH feed
-    //daiEthPriceFeed: "0xb4c4a493AB6356497713A78FFA6c60FB53517c63",
-    // This is the LINK token
-    //daiToken: "0x326C977E6efc84E512bB9C30f76E30c160eD06FB",
+    //Sepolia Aave v3 PoolAddressesProvider NOT VALID!!!
+    AAVE_ADDRESS_PROVIDER: "0x220C7a5c207B6C2F69EF4aD0d3B23C1F2DfccEd0",
+
+    // sepolia Uniswap V3 SwapRouter
+    UNISWAP_V3_ROUTER: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
   },
   // Due to the different testnets, we are leaving kovan in as a reference
   42: {
